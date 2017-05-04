@@ -1,10 +1,11 @@
 ### Telegram SmartQQ Bot
 
-#####本bot 依赖于 [MojoWebQQ](https://github.com/sjdy521/Mojo-Webqq) 项目
+##### 本bot 依赖于 [MojoWebQQ](https://github.com/sjdy521/Mojo-Webqq) 项目
 
 #### 数据流程
-telegram_user <-> this_bot <--http server--> MojoWebQQ <--> QQ
-####实现方式
+telegram_user <-> this_bot <--http server--> MojoWebQQ <--> QQ  
+
+#### 实现方式
 Telegram 接收命令, 发送到 MojoWebQQ提供的API实现发送QQ消息
 
 本程序监听的本地端口提供web 服务, MojoWebQQ收到消息后会主动推送到 本程序的接口.然后经过Bot 处理后 发送给用户实现 收取QQ消息
@@ -17,7 +18,7 @@ Telegram 接收命令, 发送到 MojoWebQQ提供的API实现发送QQ消息
 - misc/start_smartqq_api.pl
 	- 启动MojoWebQQ的后台程序,并提供API
 
-####如何开始
+#### 如何开始
 
 1. 首先按照 [隔壁](https://github.com/sjdy521/Mojo-Webqq) 的说明 安装 MojoWebQQ
 2. 复制 `config.sample.json` 为 `config.json`
