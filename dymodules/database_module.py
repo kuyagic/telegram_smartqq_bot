@@ -43,7 +43,7 @@ class MojoQqConversation(entity_base):
     mojo_qq_target_type = Column(String)
 
 
-class MojoQqConversionLink(entity_base):
+class MojoQqConversationLink(entity_base):
     __tablename__ = 'mojo_qq_conv_link'
     id = Column(String, primary_key=True)
     telegram_id = Column(String)

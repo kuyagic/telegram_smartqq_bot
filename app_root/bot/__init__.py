@@ -16,6 +16,7 @@ from telegram.ext import Dispatcher
 
 from app_root import bot_helper
 from app_root.ConstValue import *
+from app_root.DbOperation import DbOperation
 from dymodules.ConsolePrintWithColor import ConsolePrintWithColor as ConColor
 from dymodules.database_module import *
 
@@ -25,7 +26,7 @@ bp = Blueprint('bot', __name__
                )
 bh = None
 debug_target_user_id = -1
-db_obj = DatabaseHelper(os.path.join(bp.static_folder, 'smartqq.db'))
+db_obj = DbOperation(os.path.join(bp.static_folder, 'smartqq.db'))
 
 config_file_path = os.path.join(bp.static_folder, '../', 'config.json')
 use_queue = False
@@ -157,15 +158,15 @@ def set_web_hook():
 def proc_refresh_mojo_qq_meta(bot, update, args):
     request_url = '%s/get_friend_info' % bh.get_config('mojo_qq_api_base', 'http://127.0.0.1:10000/openqq')
     friend_list = requests.get(request_url).json()
-    db_obj.database.query(MojoQqFriendInfo).delete()
+    db_obj.truncate_table_entity(MojoQqFriendInfo)
 
     request_url = '%s/get_group_basic_info' % bh.get_config('mojo_qq_api_base', 'http://127.0.0.1:10000/openqq')
     group_list = requests.get(request_url).json()
-    db_obj.database.query(MojoQqGroupInfo).delete()
+    db_obj.truncate_table_entity(MojoQqGroupInfo)
 
     request_url = '%s/get_discuss_info' % bh.get_config('mojo_qq_api_base', 'http://127.0.0.1:10000/openqq')
     discuss_list = requests.get(request_url).json()
-    db_obj.database.query(MojoQqDiscussInfo).delete()
+    db_obj.truncate_table_entity(MojoQqDiscussInfo)
 
     for item in friend_list:
         friend = MojoQqFriendInfo(
@@ -176,9 +177,8 @@ def proc_refresh_mojo_qq_meta(bot, update, args):
             , group_name=item.get('category')
             , session_id=item.get('id')
         )
-        db_obj.database.add(friend)
-    db_obj.database.commit()
-    all_friend = db_obj.database.query(MojoQqFriendInfo).count()
+        db_obj.add_entity(friend)
+    all_friend = db_obj.query(MojoQqFriendInfo).count()
 
     for item in group_list:
         group = MojoQqGroupInfo(
@@ -188,9 +188,8 @@ def proc_refresh_mojo_qq_meta(bot, update, args):
             , mark_name=item.get('markname')
             , session_id=item.get('id')
         )
-        db_obj.database.add(group)
-    db_obj.database.commit()
-    all_group = db_obj.database.query(MojoQqGroupInfo).count()
+        db_obj.add_entity(group)
+    all_group = db_obj.query(MojoQqGroupInfo).count()
 
     for item in discuss_list:
         discuss = MojoQqDiscussInfo(
@@ -199,20 +198,19 @@ def proc_refresh_mojo_qq_meta(bot, update, args):
             , owner_id=item.get('owner_id')
             , name=item.get('name')
         )
-        db_obj.database.add(discuss)
-    db_obj.database.commit()
-    all_discuss = db_obj.database.query(MojoQqDiscussInfo).count()
+        db_obj.add_entity(discuss)
+    all_discuss = db_obj.query(MojoQqDiscussInfo).count()
 
     __reply_msg(bot, update, 'Update OK `%s` Friends, `%s` Groups, `%s` Discussions' % (
         all_friend, all_group, all_discuss), parse_mode=telegram.ParseMode.MARKDOWN)
     pass
 
 
-@bh.register_common_handler('mklink', pass_args=True)
+@bh.register_common_handler('link', pass_args=True)
 @bh.check_self_bot()
 @bh.check_chat_type(telegram.Chat.PRIVATE, False)
 @bh.check_user_id(debug_target_user_id, False)
-def proc_list_mojo_qq_friend(bot, update, args):
+def proc_link_qq_friend(bot, update, args):
     if len(args) != 1:
         __reply_msg(bot, update, 'Need Query')
         return
@@ -220,7 +218,7 @@ def proc_list_mojo_qq_friend(bot, update, args):
     inline_button = []
 
     # query friend
-    friend_query_result = db_obj.database.query(MojoQqFriendInfo).filter(
+    friend_query_result = db_obj.query(MojoQqFriendInfo).filter(
         sqlalchemy.text('mark_name like :m or nick_name like :m')
     ).params(m='%{0}%'.format(args[0])).all()
     for item in friend_query_result:
@@ -233,7 +231,7 @@ def proc_list_mojo_qq_friend(bot, update, args):
         )])
 
     # query discussion
-    discussion_query_result = db_obj.database.query(MojoQqDiscussInfo).filter(
+    discussion_query_result = db_obj.query(MojoQqDiscussInfo).filter(
         sqlalchemy.text('name like :m')
     ).params(m='%{0}%'.format(args[0])).all()
     for item in discussion_query_result:
@@ -252,6 +250,51 @@ def proc_list_mojo_qq_friend(bot, update, args):
                      , text='选择需要绑定的用户'
                      , reply_markup=markup)
     pass
+
+
+@bh.register_common_handler('chat', pass_args=True)
+@bh.check_self_bot()
+@bh.check_chat_type(telegram.Chat.PRIVATE, False)
+@bh.check_user_id(debug_target_user_id, False)
+def proc_start_new_qq_chat(bot, update, args):
+    if len(args) != 1:
+        __reply_msg(bot, update, 'Need Query')
+        return
+
+    inline_button = []
+
+    # query friend
+    friend_query_result = db_obj.query(MojoQqFriendInfo).filter(
+        sqlalchemy.text('mark_name like :m or nick_name like :m')
+    ).params(m='%{0}%'.format(args[0])).all()
+    for item in friend_query_result:
+        btn_text = '%s %s' % (EMOJI_QQ_USER, item.nick_name)
+        if item.mark_name is not None and item.mark_name != '':
+            btn_text = '%s %s' % (EMOJI_QQ_USER, item.mark_name)
+        inline_button.append([telegram.InlineKeyboardButton(
+            text=btn_text
+            , callback_data='mojo_chat|%s|%s|%s' % (item.uid, QQ_USER, btn_text)
+        )])
+
+    # query discussion
+    discussion_query_result = db_obj.query(MojoQqDiscussInfo).filter(
+        sqlalchemy.text('name like :m')
+    ).params(m='%{0}%'.format(args[0])).all()
+    for item in discussion_query_result:
+        btn_text = '%s %s' % (EMOJI_QQ_DISCUSSION, item.name)  # discussion emoji
+        inline_button.append([telegram.InlineKeyboardButton(
+            text=btn_text
+            , callback_data='mojo_chat|%s|%s|%s' % (item.uid, QQ_DISCUSSION, btn_text)
+        )])
+
+    cancel_btn = telegram.InlineKeyboardButton(text='Cancel', callback_data='mojo_chat|cancel|NG')
+    inline_button.append([cancel_btn])
+
+    final_markup = inline_button
+    markup = telegram.InlineKeyboardMarkup(final_markup)
+    bot.send_message(chat_id=update.message.chat.id
+                     , text='选择需要对话的用户'
+                     , reply_markup=markup)
 
 
 @bh.register_common_handler('bind', pass_args=True)
@@ -277,7 +320,7 @@ def proc_mojo_bind(bot, update, args):
         __reply_error(bot, update, 'Group Creator Only')
         return
 
-    check_link_exist = check_mojo_link(chat_id)
+    check_link_exist = db_obj.check_mojo_link(chat_id)
     if check_link_exist is not None:
         __reply_msg(bot, update, 'Group Already Linked')
     else:
@@ -290,14 +333,13 @@ def proc_mojo_bind(bot, update, args):
             qq_type = 'discuss_message'
 
         if qq_type is not None:
-            link_object = MojoQqConversionLink(
+            link_object = MojoQqConversationLink(
                 id=str(uuid.uuid1())
                 , telegram_id=str(chat_id)
                 , mojo_qq_id=str(args[0])
                 , mojo_qq_type=qq_type
             )
-            db_obj.database.add(link_object)
-            db_obj.database.commit()
+            db_obj.add_entity(link_object)
             __reply_msg(bot, update, 'Link OK')
         else:
             __reply_msg(bot, update, 'args error')
@@ -312,12 +354,12 @@ def proc_mojo_unbind(bot, update, args):
     if message[1] is None:
         return
     chat_id = message[1].chat.id
-    check_link_exist = check_mojo_link(chat_id)
+    check_link_exist = db_obj.check_mojo_link(chat_id)
     if check_link_exist is None:
         __reply_msg(bot, update, 'Group Not Linked')
     else:
-        db_obj.database.query(MojoQqConversionLink).filter(MojoQqConversionLink.telegram_id == str(chat_id)).delete()
-        db_obj.database.commit()
+        db_obj.query(MojoQqConversationLink).filter(
+            MojoQqConversationLink.telegram_id == str(chat_id)).delete()
         __reply_msg(bot, update, 'Unlink OK')
 
 
@@ -330,15 +372,15 @@ def proc_mojo_info(bot, update, args):
     if message[1] is None:
         return
     chat_id = message[1].chat.id
-    check_link_exist = check_mojo_link(chat_id)
+    check_link_exist = db_obj.check_mojo_link(chat_id)
     if check_link_exist is None:
         __reply_msg(bot, update, 'Group Not Linked')
     else:
-        found = db_obj.database.query(MojoQqConversionLink).filter(
-            MojoQqConversionLink.telegram_id == str(chat_id)).one()
+        found = db_obj.query(MojoQqConversationLink).filter(
+            MojoQqConversationLink.telegram_id == str(chat_id)).one()
 
         if found.mojo_qq_type == QQ_USER:
-            found_user = db_obj.database.query(MojoQqFriendInfo).filter(
+            found_user = db_obj.query(MojoQqFriendInfo).filter(
                 MojoQqFriendInfo.uid == found.mojo_qq_id
             )
             try:
@@ -354,7 +396,7 @@ def proc_mojo_info(bot, update, args):
                 __reply_msg(bot, update, 'Linked user not found in table')
 
         if found.mojo_qq_type == QQ_DISCUSSION:
-            found_user = db_obj.database.query(MojoQqDiscussInfo).filter(
+            found_user = db_obj.query(MojoQqDiscussInfo).filter(
                 MojoQqDiscussInfo.uid == found.mojo_qq_id
             )
             try:
@@ -367,7 +409,7 @@ def proc_mojo_info(bot, update, args):
 
 
 @bh.register_callback_handler('mojo_link')
-def proc_mojo_mklink_callback(bot, update):
+def proc_mojo_link_callback(bot, update):
     query = update.callback_query
     chat_id = query.message.chat_id
     text = query.data
@@ -380,6 +422,26 @@ def proc_mojo_mklink_callback(bot, update):
         telegram_return_message = 'use `/bind %s %s` to bind a qq chat to the group you want' % (
             array_text[1], array_text[2]
         )
+        bot.editMessageText(chat_id=chat_id
+                            , message_id=msg_id
+                            , text=telegram_return_message
+                            , parse_mode=telegram.ParseMode.MARKDOWN)
+    pass
+
+
+@bh.register_callback_handler('mojo_chat')
+def proc_mojo_chat_callback(bot, update):
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    text = query.data
+    array_text = text.split('|')
+    msg_id = update.callback_query.message.message_id
+
+    if array_text[1] == 'cancel':
+        bot.editMessageText(chat_id=chat_id, message_id=msg_id, text='cancelled')
+    else:
+        telegram_return_message = 'reply this to chat with %s' % array_text[3]
+        db_obj.cache_message(msg_id, array_text[1], array_text[2])
         bot.editMessageText(chat_id=chat_id
                             , message_id=msg_id
                             , text=telegram_return_message
@@ -546,41 +608,84 @@ def proc_leave_group_callback(bot, update):
 
 @bh.register_message_handler(telegram.ext.Filters.text)
 def proc_all_text_msg(bot, update):
-    chat_id = update.message.chat.id
-    mojo_qq_msg = update.message.text
-    # check if forwoard to mojo
-    found = db_obj.database.query(MojoQqConversionLink).filter(
-        MojoQqConversionLink.telegram_id == str(chat_id)
-    )
-    try:
-        _try = found.one()
-        mojo_send_msg_api_url = None
-        if _try.mojo_qq_type == QQ_USER:
-            mojo_send_msg_api_url = 'send_friend_message?uid=%s&content=%s' % (_try.mojo_qq_id, mojo_qq_msg)
-        if _try.mojo_qq_type == QQ_DISCUSSION:
-            mojo_send_msg_api_url = 'send_discuss_message?id=%s&content=%s' % (_try.mojo_qq_id, mojo_qq_msg)
+    p_message = update.message
 
-        if mojo_send_msg_api_url is not None:
-            # try to call mojo_qq api to send the msg
-            full_request_url = '%s/%s' % (
-                bh.get_config('mojo_qq_api_base', 'http://127.0.0.1:10000/openqq')
-                , mojo_send_msg_api_url)
-            send_result = requests.get(full_request_url).json()
-            print(send_result)
-    except NoResultFound:
-        return
+    if p_message.reply_to_message is not None:
+        print(ConColor.blue_on_black('process reply msg'))
+        chat_id = p_message.reply_to_message.chat.id
+        msg_id = p_message.reply_to_message.message_id
+        found = db_obj.query(MojoQqConversation).filter(
+            MojoQqConversation.telegram_message_id == str(msg_id)
+        )
+        mojo_qq_msg = p_message.text
+        try:
+            _try = found.one()
+            send_message_to_mojo(_try.mojo_qq_target_id, _try.mojo_qq_target_type, mojo_qq_msg)
+        except NoResultFound:
+            print(ConColor.red_on_black('NOT found in db'))
+            __reply_msg(bot, update, 'Chat Not found in db')
+            return
+            pass
+        except MultipleResultsFound:
+            m = ''
+            for item in found:
+                m += '%s,%s,%s\n' % (item.telegram_message_id, item.mojo_qq_target_id, item.mojo_qq_target_type)
+                print(m)
+            return
+        except Exception as exx:
+            print(exx)
+            return
+    else:
+        chat_id = p_message.chat.id
+        mojo_qq_msg = update.message.text
+        # check if forwoard to mojo
+        found = db_obj.query(MojoQqConversationLink).filter(
+            MojoQqConversationLink.telegram_id == str(chat_id)
+        )
+        try:
+            _try = found.one()
+            send_message_to_mojo(_try.mojo_qq_id, _try.mojo_qq_type, mojo_qq_msg)
+        except NoResultFound:
+            return
+            pass
+        except MultipleResultsFound:
+            return
+        except Exception as exx:
+            print(exx)
+            return
         pass
-    except MultipleResultsFound:
-        return
-    except Exception as exx:
-        print(exx)
-        return
-    pass
 
 
 ##########################################################
 # 内部方法
 ##########################################################
+
+def query_message_for_qq_to_send(reply_msg_id):
+    found = db_obj.database.query(MojoQqConversation).filter(
+        MojoQqConversation.telegram_message_id == str(reply_msg_id)
+    )
+    try:
+        _try = found.one()
+        return _try
+    except NoResultFound:
+        return None
+
+
+def send_message_to_mojo(target_uid, target_type, content):
+    mojo_send_msg_api_url = None
+    if target_type == QQ_USER:
+        mojo_send_msg_api_url = 'send_friend_message?uid=%s&content=%s' % (target_uid, content)
+    if target_type == QQ_DISCUSSION:
+        mojo_send_msg_api_url = 'send_discuss_message?id=%s&content=%s' % (target_uid, content)
+
+    if mojo_send_msg_api_url is not None:
+        # try to call mojo_qq api to send the msg
+        full_request_url = '%s/%s' % (
+            bh.get_config('mojo_qq_api_base', 'http://127.0.0.1:10000/openqq')
+            , mojo_send_msg_api_url)
+        return requests.get(full_request_url).json()
+
+    return None
 
 
 def get_message_type_name_desc(message):
@@ -637,20 +742,3 @@ def get_message_entity_from_update(update):
     pass
 
 
-def check_mojo_link(telegram_chat_id):
-    found = None
-    try:
-        found = db_obj.database.query(MojoQqConversionLink).filter(
-            MojoQqConversionLink.telegram_id == str(telegram_chat_id)
-        )
-        _try = found.one()
-        print(_try)
-        return _try
-    except MultipleResultsFound:
-        print('MultipleResultsFound, %s' % found.count())
-        for item_multi in found:
-            db_obj.database.delete(item_multi)
-        db_obj.database.commit()
-        return None
-    except NoResultFound:
-        return None
