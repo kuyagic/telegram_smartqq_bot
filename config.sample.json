@@ -1,0 +1,9 @@
+{
+  "telegram_bot_api": "",
+  "set_hook": "0",
+  "telegram_web_hook_url": "",
+  "administrator_id": "",
+  "mojo_qq_api_base": "http://127.0.0.1:10000/openqq",
+  "qq_push_type": "friend_message,discuss_message",
+  "database_file": ""
+}

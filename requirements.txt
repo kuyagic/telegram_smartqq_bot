@@ -1,0 +1,7 @@
+gevent
+requests
+validators
+python_telegram_bot>=5.3
+flask
+hjson
+SQLAlchemy
