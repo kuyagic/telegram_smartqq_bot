@@ -1,9 +1,14 @@
 {
+  //Bot API Key
   "telegram_bot_api": "",
-  "set_hook": "0",
+  //是否启动时设置 webhook 地址(第一次启动必须不为0)
+  "set_hook": "1",
+  //webhook 地址 ,重要, 否则不能使用
   "telegram_web_hook_url": "",
+  //管理员ID, 可以找  /id@duyaoo_bot
   "administrator_id": "",
+  //隔壁QQ提供的 API, 具体在 /misc/start_smartqq_api.pl 内配置.默认可以不修改
   "mojo_qq_api_base": "http://127.0.0.1:10000/openqq",
-  "qq_push_type": "friend_message,discuss_message",
-  "database_file": ""
+  //推送的QQ消息, 暂时只支持讨论组和好友. 群的处理 这个bot 还没做.我比较懒,也没需求收群消息
+  "qq_push_type": "friend_message,discuss_message"
 }
