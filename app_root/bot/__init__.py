@@ -4,7 +4,7 @@ import sys
 import time
 import uuid
 from threading import Thread
-
+import os
 import hjson
 import requests
 import sqlalchemy
@@ -740,5 +740,3 @@ def get_message_entity_from_update(update):
         print(ConColor.red_on_black(exx))
         return 'none', None
     pass
-
-
