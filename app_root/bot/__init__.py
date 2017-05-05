@@ -324,25 +324,14 @@ def proc_mojo_bind(bot, update, args):
     if check_link_exist is not None:
         __reply_msg(bot, update, 'Group Already Linked')
     else:
-        qq_type = None
-        if str(args[1]).lower() == 'u':
-            qq_type = 'friend_message'
-        if str(args[1]).lower() == 'g':
-            qq_type = 'group_message'
-        if str(args[1]).lower() == 'd':
-            qq_type = 'discuss_message'
-
-        if qq_type is not None:
-            link_object = MojoQqConversationLink(
-                id=str(uuid.uuid1())
-                , telegram_id=str(chat_id)
-                , mojo_qq_id=str(args[0])
-                , mojo_qq_type=qq_type
-            )
-            db_obj.add_entity(link_object)
-            __reply_msg(bot, update, 'Link OK')
-        else:
-            __reply_msg(bot, update, 'args error')
+        link_object = MojoQqConversationLink(
+            id=str(uuid.uuid1())
+            , telegram_id=str(chat_id)
+            , mojo_qq_id=str(args[0])
+            , mojo_qq_type=args[1]
+        )
+        db_obj.add_entity(link_object)
+        __reply_msg(bot, update, 'Link OK')
 
 
 @bh.register_common_handler('unbind', pass_args=True)

@@ -27,6 +27,7 @@ class DbOperation:
     def check_mojo_link(self, telegram_chat_id):
         found = None
         try:
+            print('check_mojo_link')
             found = self._database_orm_object.database.query(MojoQqConversationLink).filter(
                 MojoQqConversationLink.telegram_id == str(telegram_chat_id)
             )
